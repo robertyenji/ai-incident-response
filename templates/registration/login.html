@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign In — AI Incident Response Platform</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      min-height: 100vh;
+      background: linear-gradient(135deg, #0E1C26 0%, #1a2d3a 35%, #294861 70%, #2A454B 100%);
+      background-attachment: fixed;
+      font-family: 'Montserrat', system-ui, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed; top: -20%; left: -10%;
+      width: 600px; height: 600px;
+      background: radial-gradient(circle, rgba(99,102,241,.1) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    body::after {
+      content: '';
+      position: fixed; bottom: -20%; right: -10%;
+      width: 500px; height: 500px;
+      background: radial-gradient(circle, rgba(239,68,68,.07) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .page-grid {
+      width: 100%; max-width: 860px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 28px;
+      align-items: start;
+      position: relative; z-index: 1;
+    }
+
+    /* ── LEFT: Brand + demo account ── */
+    .brand { margin-bottom: 28px; }
+    .brand-icon {
+      width: 52px; height: 52px;
+      background: rgba(239,68,68,.12);
+      border: 1.5px solid rgba(239,68,68,.35);
+      border-radius: 13px;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 22px; color: #ef4444;
+      margin-bottom: 14px;
+      box-shadow: 0 0 24px rgba(239,68,68,.12);
+    }
+    .brand-name {
+      font-size: 19px; font-weight: 800; color: #fff;
+      letter-spacing: -.4px; line-height: 1.2;
+    }
+    .brand-name span { color: #ef4444; }
+    .brand-sub {
+      font-size: 12px; color: rgba(148,163,184,.65);
+      margin-top: 3px; font-weight: 500;
+    }
+
+    .section-label {
+      font-size: 10px; font-weight: 800; letter-spacing: .8px;
+      text-transform: uppercase; color: rgba(100,116,139,.8);
+      margin-bottom: 10px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .section-label::after {
+      content: ''; flex: 1; height: 1px; background: rgba(255,255,255,.06);
+    }
+
+    /* Single demo account card */
+    .demo-card {
+      display: flex; align-items: center; gap: 14px;
+      background: rgba(99,102,241,.08);
+      border: 1.5px solid rgba(99,102,241,.25);
+      border-radius: 12px;
+      padding: 16px 18px;
+      cursor: pointer;
+      transition: all .18s;
+      position: relative;
+      margin-bottom: 14px;
+    }
+    .demo-card:hover {
+      background: rgba(99,102,241,.15);
+      border-color: rgba(99,102,241,.5);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(99,102,241,.2);
+    }
+    .demo-avatar {
+      width: 46px; height: 46px; border-radius: 11px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 15px; font-weight: 800; flex-shrink: 0;
+      background: rgba(99,102,241,.2);
+      border: 1.5px solid rgba(99,102,241,.4);
+      color: #a5b4fc;
+      letter-spacing: -.5px;
+    }
+    .demo-info { flex: 1; min-width: 0; }
+    .demo-name {
+      font-size: 14px; font-weight: 700; color: #e2e8f0;
+    }
+    .demo-role {
+      font-size: 11px; color: rgba(165,180,252,.7);
+      margin-top: 2px; font-weight: 500;
+    }
+    .demo-username {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px; color: rgba(148,163,184,.55);
+      margin-top: 4px;
+    }
+    .demo-arrow {
+      font-size: 18px; color: rgba(99,102,241,.5);
+      transition: transform .18s;
+    }
+    .demo-card:hover .demo-arrow {
+      color: rgba(99,102,241,.9);
+      transform: translateX(3px);
+    }
+
+    /* Pool stats */
+    .pool-stats {
+      display: flex; gap: 10px; margin-bottom: 20px;
+    }
+    .stat-chip {
+      flex: 1; border-radius: 8px; padding: 10px 12px; text-align: center;
+    }
+    .stat-chip.active {
+      background: rgba(16,185,129,.08);
+      border: 1px solid rgba(16,185,129,.2);
+    }
+    .stat-chip.suspended {
+      background: rgba(239,68,68,.07);
+      border: 1px solid rgba(239,68,68,.15);
+    }
+    .stat-chip .stat-num {
+      font-size: 20px; font-weight: 800;
+      display: block; line-height: 1;
+    }
+    .stat-chip.active .stat-num { color: #6ee7b7; }
+    .stat-chip.suspended .stat-num { color: #fca5a5; }
+    .stat-chip .stat-label {
+      font-size: 9px; font-weight: 700; letter-spacing: .6px;
+      text-transform: uppercase; margin-top: 4px; display: block;
+    }
+    .stat-chip.active .stat-label { color: rgba(110,231,183,.6); }
+    .stat-chip.suspended .stat-label { color: rgba(252,165,165,.6); }
+
+    .pw-note {
+      background: rgba(30,41,59,.5);
+      border: 1px solid rgba(255,255,255,.07);
+      border-radius: 8px; padding: 10px 14px;
+      display: flex; align-items: center; gap: 10px;
+      font-size: 11px; color: rgba(148,163,184,.7); font-weight: 500;
+    }
+    .pw-note i { color: rgba(99,102,241,.6); font-size: 14px; flex-shrink: 0; }
+    .pw-note code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px; font-weight: 600; color: #a5b4fc;
+      background: rgba(99,102,241,.12);
+      padding: 1px 7px; border-radius: 4px;
+    }
+
+    .no-accounts {
+      background: rgba(239,68,68,.07);
+      border: 1px solid rgba(239,68,68,.2);
+      border-radius: 10px; padding: 18px;
+      text-align: center; font-size: 12px;
+      color: rgba(252,165,165,.8); font-weight: 600;
+      margin-bottom: 14px;
+    }
+    .no-accounts i { font-size: 22px; display: block; margin-bottom: 8px; color: #ef4444; }
+
+    /* ── RIGHT: Login form ── */
+    .login-card {
+      background: rgba(8,14,24,.72);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 16px; padding: 32px;
+      box-shadow: 0 24px 80px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.05);
+    }
+    .card-heading {
+      font-size: 16px; font-weight: 800; color: #e2e8f0;
+      margin-bottom: 4px; letter-spacing: -.3px;
+    }
+    .card-sub {
+      font-size: 12px; color: rgba(100,116,139,.85);
+      margin-bottom: 26px; font-weight: 500;
+    }
+
+    .field { margin-bottom: 16px; }
+    .field label {
+      display: block; font-size: 10px; font-weight: 800;
+      letter-spacing: .8px; text-transform: uppercase;
+      color: rgba(148,163,184,.8); margin-bottom: 7px;
+    }
+    .field-inner { position: relative; }
+    .field-inner i {
+      position: absolute; left: 13px; top: 50%; transform: translateY(-50%);
+      font-size: 15px; color: rgba(100,116,139,.6); pointer-events: none;
+    }
+    .field input {
+      width: 100%;
+      background: rgba(0,0,0,.35);
+      border: 1.5px solid rgba(255,255,255,.08);
+      border-radius: 9px; color: #e2e8f0;
+      font-size: 14px; font-family: 'Montserrat', sans-serif; font-weight: 500;
+      padding: 11px 14px 11px 40px; outline: none;
+      transition: border-color .2s, box-shadow .2s;
+    }
+    .field input::placeholder { color: rgba(100,116,139,.5); }
+    .field input:focus {
+      border-color: rgba(99,102,241,.7);
+      box-shadow: 0 0 0 3px rgba(99,102,241,.12);
+    }
+
+    .error-box {
+      background: rgba(239,68,68,.1); border: 1px solid rgba(239,68,68,.3);
+      border-radius: 8px; padding: 11px 14px; margin-bottom: 18px;
+      font-size: 12px; color: #fca5a5;
+      display: flex; align-items: flex-start; gap: 9px; font-weight: 600;
+    }
+    .error-box i { font-size: 14px; flex-shrink: 0; margin-top: 1px; color: #ef4444; }
+
+    .btn-signin {
+      width: 100%;
+      background: linear-gradient(135deg, #dc2626, #ef4444);
+      border: none; border-radius: 9px; color: #fff;
+      font-size: 14px; font-weight: 800; font-family: 'Montserrat', sans-serif;
+      letter-spacing: .5px; padding: 13px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 9px;
+      box-shadow: 0 4px 20px rgba(239,68,68,.3);
+      transition: all .2s; margin-top: 22px;
+    }
+    .btn-signin:hover {
+      background: linear-gradient(135deg, #b91c1c, #dc2626);
+      box-shadow: 0 4px 28px rgba(239,68,68,.5);
+      transform: translateY(-1px);
+    }
+
+    .divider { height: 1px; background: rgba(255,255,255,.07); margin: 24px 0 20px; }
+
+    .fw-pills { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+    .fw-pill {
+      font-size: 9px; font-weight: 700; letter-spacing: .5px;
+      text-transform: uppercase; padding: 3px 8px; border-radius: 4px;
+      background: rgba(99,102,241,.09); color: rgba(165,180,252,.75);
+      border: 1px solid rgba(99,102,241,.15);
+    }
+
+    .access-notice {
+      text-align: center; margin-top: 20px;
+      font-size: 11px; color: rgba(100,116,139,.55);
+      font-weight: 500; line-height: 1.6;
+      position: relative; z-index: 1; width: 100%; max-width: 860px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="page-grid">
+
+  <!-- ── LEFT ── -->
+  <div>
+    <div class="brand">
+      <div class="brand-icon"><i class="bi bi-shield-shaded"></i></div>
+      <div class="brand-name">AI Incident <span>Response</span></div>
+      <div class="brand-sub">Healthcare AI Governance Platform</div>
+    </div>
+
+    <div class="section-label">Demo Analyst Account</div>
+
+    {% if demo_account %}
+    <!-- Single random active account card -->
+    <div class="demo-card" onclick="fillLogin('{{ demo_account.username }}', '{{ demo_password }}')">
+      <div class="demo-avatar">{{ demo_account.initials }}</div>
+      <div class="demo-info">
+        <div class="demo-name">{{ demo_account.full_name }}</div>
+        <div class="demo-role">{{ demo_account.role }}</div>
+        <div class="demo-username">{{ demo_account.username }}</div>
+      </div>
+      <i class="bi bi-arrow-right-circle demo-arrow"></i>
+    </div>
+
+    <div class="pw-note">
+      <i class="bi bi-key"></i>
+      <span>Password: <code>{{ demo_password }}</code> &mdash; click card to auto-fill</span>
+    </div>
+
+    {% else %}
+    <!-- All accounts suspended -->
+    <div class="no-accounts">
+      <i class="bi bi-shield-x"></i>
+      All {{ pool_total }} analyst accounts have been suspended by the automated containment system. Contact the platform administrator to reset the demo pool.
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- ── RIGHT: Login form ── -->
+  <div class="login-card">
+    <div class="card-heading">Analyst Sign In</div>
+    <div class="card-sub">Authorized security personnel only</div>
+
+    {% if form.errors %}
+    <div class="error-box">
+      <i class="bi bi-exclamation-triangle-fill"></i>
+      <span>Invalid credentials or account suspended. Use the active account shown on the left.</span>
+    </div>
+    {% endif %}
+
+    <form method="post" autocomplete="off">
+      {% csrf_token %}
+      <input type="hidden" name="next" value="{{ next }}">
+
+      <div class="field">
+        <label>Username</label>
+        <div class="field-inner">
+          <i class="bi bi-person-badge"></i>
+          <input type="text" name="username" id="id_username"
+            placeholder="click the account card or type"
+            autofocus autocomplete="username">
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Password</label>
+        <div class="field-inner">
+          <i class="bi bi-lock"></i>
+          <input type="password" name="password" id="id_password"
+            placeholder="••••••••••••" autocomplete="current-password">
+        </div>
+      </div>
+
+      <button type="submit" class="btn-signin">
+        <i class="bi bi-shield-lock"></i>
+        ACCESS PLATFORM
+      </button>
+    </form>
+
+    <div class="divider"></div>
+
+    <div class="fw-pills">
+      <span class="fw-pill">NIST SP 800-61</span>
+      <span class="fw-pill">HIPAA 164.308</span>
+      <span class="fw-pill">OWASP LLM Top 10</span>
+      <span class="fw-pill">NIST AI RMF</span>
+    </div>
+  </div>
+
+</div>
+
+<div class="access-notice">
+  <i class="bi bi-lock-fill"></i>
+  Restricted to authorized personnel. All access is logged per HIPAA 45 CFR 164.312(b).
+</div>
+
+<script>
+function fillLogin(username, password) {
+  document.getElementById('id_username').value = username;
+  document.getElementById('id_password').value = password;
+  document.getElementById('id_password').focus();
+}
+</script>
+</body>
+</html>

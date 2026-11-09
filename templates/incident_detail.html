@@ -1,0 +1,304 @@
+{% extends "base.html" %}
+{% load incident_filters %}
+{% block title %}Incident {{ incident.incident_id|stringformat:"s"|slice:":8" }} - AI Incident Response{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+  <a href="{% url 'dashboard' %}" style="font-size:13px;color:var(--text-muted)">
+    <i class="bi bi-arrow-left me-1"></i> Dashboard
+  </a>
+</div>
+
+<!-- Header -->
+<div class="d-flex align-items-start justify-content-between mb-4">
+  <div>
+    <div class="d-flex align-items-center gap-3 mb-2">
+      <h1 style="font-size:20px;font-weight:700;margin:0;font-family:monospace">
+        {{ incident.incident_id }}
+      </h1>
+      <span class="severity-badge badge-{{ incident.severity_color }}">{{ incident.severity }}</span>
+      <span class="severity-badge badge-{% if incident.status == 'OPEN' %}critical{% elif incident.status == 'RESOLVED' %}success{% elif incident.status == 'FALSE_POSITIVE' %}secondary{% else %}high{% endif %}">
+        {{ incident.status }}
+      </span>
+    </div>
+    <div style="font-size:13px;color:var(--text-muted)">
+      Detected {{ incident.timestamp|date:"N j, Y \a\t H:i:s" }} UTC
+    </div>
+  </div>
+  {% if incident.status == 'OPEN' or incident.status == 'CONTAINED' %}
+  <div class="d-flex gap-2">
+    <button onclick="resolveIncident('{{ incident.incident_id }}')"
+      class="btn btn-sm" style="background:var(--success);color:#fff;border:none;border-radius:6px;font-size:13px;padding:7px 14px">
+      <i class="bi bi-check-circle me-1"></i> Resolve
+    </button>
+    <button onclick="markFalsePositive('{{ incident.incident_id }}')"
+      class="btn btn-sm" style="background:var(--surface);color:var(--text-muted);border:1px solid var(--border);border-radius:6px;font-size:13px;padding:7px 14px">
+      <i class="bi bi-flag me-1"></i> False Positive
+    </button>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Overview row -->
+<div class="row g-3 mb-4">
+  <div class="col-4">
+    <div class="card">
+      <div class="section-title">Detection Summary</div>
+      <div class="mb-3">
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px">Attack Categories</div>
+        {% for cat in incident.categories %}
+        <span style="display:inline-block;background:rgba(56,139,253,.1);color:var(--info);border:1px solid rgba(56,139,253,.3);border-radius:4px;padding:2px 8px;font-size:12px;margin:2px">
+          {{ cat|fmt_cat }}
+        </span>
+        {% endfor %}
+      </div>
+      <div class="row g-2">
+        <div class="col-6">
+          <div style="font-size:11px;font-weight:700;color:#7a90aa;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Patterns Matched</div>
+          <div style="font-size:28px;font-weight:800;color:#f87171;letter-spacing:-1px">{{ incident.pattern_count }}</div>
+        </div>
+        <div class="col-6">
+          <div style="font-size:11px;font-weight:700;color:#7a90aa;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Input Length</div>
+          <div style="font-size:28px;font-weight:800;color:#e2e8f0;letter-spacing:-1px">{{ incident.input_length }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-4">
+    <div class="card">
+      <div class="section-title">Identity</div>
+      <div class="mb-3">
+        <div style="font-size:11px;font-weight:700;color:#7a90aa;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">User ID</div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:13px;color:#e2e8f0;word-break:break-all">{{ incident.user_id|default:"Unknown" }}</div>
+      </div>
+      <div>
+        <div style="font-size:11px;font-weight:700;color:#7a90aa;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Session ID</div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#a8bccf;word-break:break-all">{{ incident.session_id|default:"Unknown" }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-4">
+    <div class="card">
+      <div class="section-title">Response Summary</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.06)">
+        <span style="font-size:12px;font-weight:600;color:#a8bccf">Containment Actions</span>
+        <span style="font-size:18px;font-weight:800;color:#fbbf24">{{ containment_actions.count }}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.06)">
+        <span style="font-size:12px;font-weight:600;color:#a8bccf">Notifications Sent</span>
+        <span style="font-size:18px;font-weight:800;color:#60a5fa">{{ notifications.count }}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0">
+        <span style="font-size:12px;font-weight:600;color:#a8bccf">Evidence Packages</span>
+        <span style="font-size:18px;font-weight:800;color:#34d399">{{ evidence_packages.count }}</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Raw input -->
+<div class="card mb-3">
+  <div class="section-title">Raw Input <span style="font-weight:500;color:#7a90aa;text-transform:none;letter-spacing:0;font-size:11px">(the prompt that triggered detection)</span></div>
+  <div style="background:#03060b;border:1px solid rgba(239,68,68,.25);border-left:3px solid #f87171;border-radius:8px;padding:16px;font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.7;color:#fca5a5">
+    {{ incident.raw_input }}
+  </div>
+</div>
+
+<!-- Timeline -->
+<div class="card mb-3">
+  <div class="section-title">Incident Timeline</div>
+  <div style="position:relative;padding-left:32px">
+    <div style="position:absolute;left:9px;top:12px;bottom:12px;width:2px;background:linear-gradient(180deg,rgba(239,68,68,.6),rgba(245,158,11,.4),rgba(59,130,246,.4),rgba(16,185,129,.4));border-radius:2px"></div>
+
+    <!-- Detection -->
+    <div style="position:relative;margin-bottom:24px;padding:14px 16px;background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.2);border-radius:10px">
+      <div style="position:absolute;left:-28px;top:50%;transform:translateY(-50%);width:14px;height:14px;border-radius:50%;background:#f87171;box-shadow:0 0 10px rgba(239,68,68,.7),0 0 20px rgba(239,68,68,.3);border:2px solid #fca5a5"></div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+        <span style="font-size:13px;font-weight:700;color:#f0f4f8">Detection</span>
+        <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:rgba(239,68,68,.2);color:#fca5a5;border:1px solid rgba(239,68,68,.35);letter-spacing:.4px;text-transform:uppercase">TRIGGER</span>
+      </div>
+      <div style="font-size:11px;color:#7a90aa;font-family:'JetBrains Mono',monospace;margin-bottom:4px">{{ incident.timestamp|date:"H:i:s.u" }} UTC</div>
+      <div style="font-size:12px;color:#a8bccf;margin-top:2px">
+        {{ incident.pattern_count }} pattern(s) matched &mdash; severity classified as <strong style="color:#f87171">{{ incident.severity }}</strong>
+      </div>
+    </div>
+
+    <!-- Containment -->
+    {% for action in containment_actions %}
+    <div style="position:relative;margin-bottom:24px;padding:14px 16px;background:rgba(245,158,11,.07);border:1px solid rgba(245,158,11,.2);border-radius:10px">
+      <div style="position:absolute;left:-28px;top:50%;transform:translateY(-50%);width:14px;height:14px;border-radius:50%;background:#fbbf24;box-shadow:0 0 10px rgba(245,158,11,.6),0 0 20px rgba(245,158,11,.25);border:2px solid #fde68a"></div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+        <span style="font-size:13px;font-weight:700;color:#f0f4f8">{{ action.action_type|fmt_cat }}</span>
+        <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:rgba(245,158,11,.2);color:#fde68a;border:1px solid rgba(245,158,11,.35);letter-spacing:.4px;text-transform:uppercase">CONTAINMENT</span>
+      </div>
+      <div style="font-size:11px;color:#7a90aa;font-family:'JetBrains Mono',monospace;margin-bottom:4px">{{ action.executed_at|date:"H:i:s" }} UTC</div>
+      <div style="font-size:12px;color:#a8bccf">{{ action.details }}</div>
+    </div>
+    {% endfor %}
+
+    <!-- Notifications -->
+    {% for n in notifications %}
+    <div style="position:relative;margin-bottom:24px;padding:14px 16px;background:rgba(59,130,246,.07);border:1px solid rgba(59,130,246,.2);border-radius:10px">
+      <div style="position:absolute;left:-28px;top:50%;transform:translateY(-50%);width:14px;height:14px;border-radius:50%;background:#60a5fa;box-shadow:0 0 10px rgba(59,130,246,.6),0 0 20px rgba(59,130,246,.25);border:2px solid #93c5fd"></div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+        <span style="font-size:13px;font-weight:700;color:#f0f4f8">Notification Sent</span>
+        <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:rgba(59,130,246,.2);color:#93c5fd;border:1px solid rgba(59,130,246,.35);letter-spacing:.4px;text-transform:uppercase">ALERT</span>
+      </div>
+      <div style="font-size:11px;color:#7a90aa;font-family:'JetBrains Mono',monospace;margin-bottom:4px">{{ n.sent_at|date:"H:i:s" }} UTC</div>
+      <div style="font-size:12px;color:#a8bccf">
+        {{ n.recipient }} &mdash;
+        <span style="font-weight:700;color:{% if n.delivery_status == 'DELIVERED' %}#34d399{% else %}#f87171{% endif %}">
+          {{ n.delivery_status }}
+        </span>
+      </div>
+    </div>
+    {% endfor %}
+
+    <!-- Evidence -->
+    {% for pkg in evidence_packages %}
+    <div style="position:relative;margin-bottom:24px;padding:14px 16px;background:rgba(16,185,129,.07);border:1px solid rgba(16,185,129,.2);border-radius:10px">
+      <div style="position:absolute;left:-28px;top:50%;transform:translateY(-50%);width:14px;height:14px;border-radius:50%;background:#34d399;box-shadow:0 0 10px rgba(16,185,129,.6),0 0 20px rgba(16,185,129,.25);border:2px solid #6ee7b7"></div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+        <span style="font-size:13px;font-weight:700;color:#f0f4f8">Evidence Collected</span>
+        <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:rgba(16,185,129,.2);color:#6ee7b7;border:1px solid rgba(16,185,129,.35);letter-spacing:.4px;text-transform:uppercase">FORENSIC</span>
+      </div>
+      <div style="font-size:11px;color:#7a90aa;font-family:'JetBrains Mono',monospace;margin-bottom:4px">{{ pkg.created_at|date:"H:i:s" }} UTC</div>
+      <div style="font-size:12px;color:#a8bccf">
+        {{ pkg.artifact_count }} artifacts &mdash;
+        SHA-256: <span style="font-family:'JetBrains Mono',monospace;color:#c4c9ff">{{ pkg.package_hash|slice:":24" }}...</span>
+      </div>
+      <div style="font-size:11px;color:#7a90aa;margin-top:3px">{{ pkg.retention_note }}</div>
+    </div>
+    {% endfor %}
+
+    {% if incident.status == 'RESOLVED' %}
+    <div style="position:relative;padding:14px 16px;background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.3);border-radius:10px">
+      <div style="position:absolute;left:-28px;top:50%;transform:translateY(-50%);width:14px;height:14px;border-radius:50%;background:#34d399;box-shadow:0 0 12px rgba(16,185,129,.8),0 0 24px rgba(16,185,129,.3);border:2px solid #6ee7b7"></div>
+      <div style="font-size:13px;font-weight:700;color:#34d399;margin-bottom:4px">Resolved</div>
+      <div style="font-size:11px;color:#7a90aa;font-family:'JetBrains Mono',monospace">
+        {{ incident.resolved_at|date:"H:i:s" }} UTC &mdash; {{ incident.resolved_by }}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Flags -->
+{% if incident.flags %}
+<div class="card mb-3">
+  <div class="section-title">Matched Patterns</div>
+  {% for flag in incident.flags %}
+  <div style="background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:8px 12px;font-family:monospace;font-size:12px;color:var(--high);margin-bottom:6px">
+    {{ flag }}
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<!-- ================================================================== -->
+<!-- FRAMEWORK ANALYSIS                                                   -->
+<!-- ================================================================== -->
+{% if violations %}
+<div class="card mb-3" style="padding:0">
+  <div class="card-header-row">
+    <div class="section-title" style="margin:0">Framework Analysis</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+      {% for fw_name, fw_data in framework_summary.items %}
+      <span style="font-size:11px;font-weight:700;padding:3px 8px;border-radius:4px;background:rgba(255,255,255,.05);border:1px solid var(--border2);color:var(--text-muted)">
+        {{ fw_name }} &bull; {{ fw_data.count }} control{{ fw_data.count|pluralize }}
+      </span>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Framework tabs -->
+  <div style="border-bottom:1px solid var(--border);padding:0 20px;display:flex;gap:0;overflow-x:auto">
+    {% for fw_name, fw_data in framework_summary.items %}
+    <button
+      class="fw-tab{% if forloop.first %} active{% endif %}"
+      onclick="showFwTab(this, '{{ fw_name|slugify }}')"
+      style="background:none;border:none;border-bottom:2px solid {% if forloop.first %}var(--accent){% else %}transparent{% endif %};color:{% if forloop.first %}var(--text){% else %}var(--text-muted){% endif %};padding:10px 16px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;transition:all .2s">
+      {{ fw_name }}
+    </button>
+    {% endfor %}
+  </div>
+
+  <!-- Tab panels -->
+  {% for fw_name, fw_data in framework_summary.items %}
+  <div id="fwtab-{{ fw_name|slugify }}" class="fw-panel" style="{% if not forloop.first %}display:none;{% endif %}padding:20px">
+    {% for ctrl in fw_data.controls %}
+    <div style="background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:18px 20px;margin-bottom:14px">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px;flex-wrap:wrap">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <span style="font-size:11px;font-weight:700;font-family:monospace;background:rgba(99,102,241,.15);color:var(--accent);border:1px solid rgba(99,102,241,.3);border-radius:4px;padding:3px 8px">
+            {{ ctrl.badge }}
+          </span>
+          <span style="font-size:14px;font-weight:600;color:var(--text)">{{ ctrl.title }}</span>
+        </div>
+        <span class="severity-badge badge-critical" style="font-size:10px;white-space:nowrap">VIOLATED</span>
+      </div>
+
+      <!-- Analysis -->
+      <div style="font-size:13px;color:var(--text-dim);line-height:1.75;margin-bottom:12px;padding:12px 14px;background:rgba(0,0,0,.2);border-left:3px solid var(--accent);border-radius:0 6px 6px 0">
+        {{ ctrl.analysis }}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+{% if incident.triggered %}
+<div class="card mb-3" style="padding:20px;text-align:center;color:var(--text-muted);font-size:13px">
+  <i class="bi bi-info-circle me-2"></i>
+  Framework analysis not available for this incident. Run
+  <code style="font-size:11px">python manage.py seed_frameworks</code> to load the knowledge bank,
+  then re-scan via the AI Red Team Testing console.
+</div>
+{% endif %}
+{% endif %}
+
+<div id="toast" style="display:none;position:fixed;bottom:24px;right:24px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px 20px;font-size:14px;z-index:9999"></div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function showFwTab(btn, tabId) {
+  document.querySelectorAll('.fw-tab').forEach(b => {
+    b.style.borderBottomColor = 'transparent';
+    b.style.color = 'var(--text-muted)';
+  });
+  document.querySelectorAll('.fw-panel').forEach(p => p.style.display = 'none');
+  btn.style.borderBottomColor = 'var(--accent)';
+  btn.style.color = 'var(--text)';
+  document.getElementById('fwtab-' + tabId).style.display = 'block';
+}
+
+function showToast(msg, color) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.color = color || 'var(--text)';
+  t.style.display = 'block';
+  setTimeout(() => t.style.display = 'none', 3000);
+}
+
+function resolveIncident(id) {
+  fetch(`/api/incidents/${id}/resolve/`, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({resolved_by: 'analyst'})
+  }).then(r => r.json()).then(() => {
+    showToast('Incident resolved.', 'var(--success)');
+    setTimeout(() => location.reload(), 1000);
+  });
+}
+
+function markFalsePositive(id) {
+  fetch(`/api/incidents/${id}/false-positive/`, { method: 'POST' })
+    .then(r => r.json()).then(() => {
+      showToast('Marked as false positive.', 'var(--text-muted)');
+      setTimeout(() => location.reload(), 1000);
+    });
+}
+</script>
+{% endblock %}

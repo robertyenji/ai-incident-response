@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+{% block title %}Controls & Policies - AI Incident Response{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>AI Security Controls & Policies</h1>
+  <div class="subtitle">Detection rules mapped to OWASP LLM Top 10, NIST AI RMF, and HIPAA security rule requirements</div>
+  <div class="header-meta">
+    <span class="framework-tag">NIST AI RMF 1.0</span>
+    <span class="framework-tag">OWASP LLM Top 10 2025</span>
+    <span class="framework-tag">HIPAA 45 CFR 164.308</span>
+  </div>
+</div>
+
+<!-- Control summary row -->
+<div class="row g-3 mb-4">
+  <div class="col-3">
+    <div class="card stat-card stat-info">
+      <div class="stat-number" style="color:var(--info)">{{ controls|length }}</div>
+      <div class="stat-label">Active Controls</div>
+    </div>
+  </div>
+  <div class="col-3">
+    <div class="card stat-card stat-critical">
+      <div class="stat-number" style="color:var(--critical)">5</div>
+      <div class="stat-label">Attack Categories</div>
+    </div>
+  </div>
+  <div class="col-3">
+    <div class="card stat-card stat-neutral">
+      <div class="stat-number">3</div>
+      <div class="stat-label">Severity Tiers</div>
+    </div>
+  </div>
+  <div class="col-3">
+    <div class="card stat-card stat-neutral">
+      <div class="stat-number" style="color:var(--success)">AUTO</div>
+      <div class="stat-label">Response Mode</div>
+    </div>
+  </div>
+</div>
+
+<!-- Controls table -->
+<div class="card mb-4" style="padding:0">
+  <div class="card-header-row">
+    <div class="section-title" style="margin:0">Prompt Injection Detection Controls</div>
+    <span class="framework-tag">OWASP LLM01</span>
+  </div>
+  <table class="table mb-0">
+    <thead>
+      <tr>
+        <th style="padding-left:20px">Control ID</th>
+        <th>Attack Category</th>
+        <th>Detection Patterns</th>
+        <th>Severity Trigger</th>
+        <th>OWASP Ref</th>
+        <th>NIST AI RMF</th>
+        <th>Auto Response</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for ctrl in controls %}
+      <tr>
+        <td style="padding-left:20px;font-family:monospace;font-size:12px;color:var(--accent)">{{ ctrl.id }}</td>
+        <td>
+          <div style="font-size:13px;font-weight:600">{{ ctrl.name }}</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:2px">{{ ctrl.description }}</div>
+        </td>
+        <td>
+          {% for p in ctrl.patterns %}
+            <span style="display:inline-block;background:var(--surface2);border:1px solid var(--border2);border-radius:4px;padding:1px 6px;font-size:10px;font-family:monospace;color:var(--text-dim);margin:1px">{{ p }}</span>
+          {% endfor %}
+        </td>
+        <td>
+          <span class="severity-badge badge-{{ ctrl.severity_class }}">{{ ctrl.severity }}</span>
+        </td>
+        <td>
+          <span class="framework-tag" style="font-size:10px">{{ ctrl.owasp }}</span>
+        </td>
+        <td style="font-size:11px;color:var(--text-muted)">{{ ctrl.nist }}</td>
+        <td>
+          <span class="severity-badge badge-success" style="font-size:10px">
+            <i class="bi bi-check2"></i> {{ ctrl.auto_action }}
+          </span>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Containment policies -->
+<div class="row g-3 mb-4">
+  <div class="col-6">
+    <div class="card" style="padding:0">
+      <div class="card-header-row">
+        <div class="section-title" style="margin:0">Containment Policy Matrix</div>
+        <span class="framework-tag">NIST SP 800-61 Ph.2</span>
+      </div>
+      <div style="padding:16px 20px">
+        {% for policy in containment_policies %}
+        <div style="background:var(--surface2);border:1px solid var(--border2);border-radius:7px;padding:14px 16px;margin-bottom:10px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+            <span class="severity-badge badge-{{ policy.severity_class }}">{{ policy.severity }}</span>
+            <span style="font-size:11px;color:var(--text-muted)">Automated · Immediate</span>
+          </div>
+          {% for action in policy.actions %}
+          <div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px">
+            <i class="bi bi-arrow-right-circle" style="color:{{ policy.icon_color }};font-size:12px"></i>
+            <span style="color:var(--text)">{{ action }}</span>
+          </div>
+          {% endfor %}
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-6">
+    <div class="card" style="padding:0">
+      <div class="card-header-row">
+        <div class="section-title" style="margin:0">Notification Escalation Matrix</div>
+        <span class="framework-tag">NIST SP 800-61 Ph.3</span>
+      </div>
+      <div style="padding:16px 20px">
+        {% for tier in notification_tiers %}
+        <div style="background:var(--surface2);border:1px solid var(--border2);border-radius:7px;padding:14px 16px;margin-bottom:10px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+            <span class="severity-badge badge-{{ tier.severity_class }}">{{ tier.severity }}</span>
+            <span style="font-size:11px;color:var(--text-muted)">SLA: {{ tier.sla }}</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+            {% for r in tier.recipients %}
+            <span style="background:var(--info-bg);border:1px solid var(--info-border);color:var(--info);border-radius:5px;padding:3px 8px;font-size:11px;font-weight:600">
+              <i class="bi bi-person"></i> {{ r }}
+            </span>
+            {% if not forloop.last %}
+            <i class="bi bi-arrow-right" style="color:var(--text-muted);font-size:11px"></i>
+            {% endif %}
+            {% endfor %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Evidence & Retention -->
+<div class="card" style="padding:0">
+  <div class="card-header-row">
+    <div class="section-title" style="margin:0">Evidence & Retention Policy</div>
+    <span class="framework-tag">HIPAA 45 CFR 164.530(j)</span>
+  </div>
+  <div style="padding:20px">
+    <div class="row g-3">
+      <div class="col-4">
+        <div style="background:var(--surface2);border:1px solid var(--border2);border-radius:7px;padding:16px">
+          <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Chain of Custody</div>
+          <div style="font-size:12px;color:var(--text-dim);line-height:1.7">
+            Every artifact is SHA-256 hashed at collection time. Hash values are stored in a chain-of-custody JSON alongside the forensic ZIP archive, ensuring tamper-evident evidence for regulatory examination.
+          </div>
+        </div>
+      </div>
+      <div class="col-4">
+        <div style="background:var(--surface2);border:1px solid var(--border2);border-radius:7px;padding:16px">
+          <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Retention Schedule</div>
+          <div style="font-size:12px;color:var(--text-dim);line-height:1.7">
+            Incident records and evidence packages are retained for a minimum of <strong style="color:var(--text)">6 years</strong> per HIPAA 45 CFR 164.530(j). Each archive is tagged with retention metadata at creation.
+          </div>
+        </div>
+      </div>
+      <div class="col-4">
+        <div style="background:var(--surface2);border:1px solid var(--border2);border-radius:7px;padding:16px">
+          <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Artifact Inventory</div>
+          <div style="font-size:12px;color:var(--text-dim);line-height:1.7">
+            Each evidence package captures: raw input, detection results, containment logs, notification receipts, system metadata, and timestamp records — all in a single auditable ZIP archive.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

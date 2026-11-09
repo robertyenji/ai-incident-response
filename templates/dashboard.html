@@ -1,0 +1,269 @@
+{% extends "base.html" %}
+{% load incident_filters %}
+{% block title %}Executive Dashboard - AI Incident Response{% endblock %}
+
+{% block content %}
+<!-- Page header -->
+<div class="page-header d-flex align-items-start justify-content-between">
+  <div>
+    <h1>Executive AI Risk Dashboard</h1>
+    <div class="subtitle">Real-time monitoring · Healthcare AI governance · HIPAA-aligned incident response</div>
+    <div class="header-meta">
+      <span class="framework-tag">NIST SP 800-61 Rev 2</span>
+      <span class="framework-tag">OWASP LLM01 – LLM06</span>
+      <span class="framework-tag">HIPAA 45 CFR 164.308(a)(6)</span>
+    </div>
+  </div>
+  <a href="{% url 'simulator' %}"
+     style="display:inline-flex;align-items:center;gap:8px;background:var(--critical);color:#fff;border:none;border-radius:7px;padding:9px 18px;font-size:13px;font-weight:600;white-space:nowrap">
+    <i class="bi bi-bug"></i> Run Red Team Test
+  </a>
+</div>
+
+<!-- Stat row -->
+<div class="row g-3 mb-4">
+  <div class="col-3">
+    <div class="card stat-card stat-neutral">
+      <div class="stat-icon"><i class="bi bi-activity"></i></div>
+      <div class="stat-number">{{ total }}</div>
+      <div class="stat-label">Total Incidents</div>
+      <div class="stat-delta" style="color:#818cf8">All time logged</div>
+    </div>
+  </div>
+  <div class="col-3">
+    <div class="card stat-card stat-critical">
+      <div class="stat-icon"><i class="bi bi-exclamation-circle-fill"></i></div>
+      <div class="stat-number">{{ open_count }}</div>
+      <div class="stat-label">Open / Active</div>
+      <div class="stat-delta" style="color:#f87171">Requires action</div>
+    </div>
+  </div>
+  <div class="col-3">
+    <div class="card stat-card stat-critical">
+      <div class="stat-icon"><i class="bi bi-shield-x"></i></div>
+      <div class="stat-number">{{ critical_count }}</div>
+      <div class="stat-label">Critical Severity</div>
+      <div class="stat-delta" style="color:#7a90aa">Jailbreak / Exfiltration</div>
+    </div>
+  </div>
+  <div class="col-3">
+    <div class="card stat-card stat-high">
+      <div class="stat-icon"><i class="bi bi-lightning-fill"></i></div>
+      <div class="stat-number">{{ high_count }}</div>
+      <div class="stat-label">High Severity</div>
+      <div class="stat-delta" style="color:#7a90aa">Injection / Hijacking</div>
+    </div>
+  </div>
+</div>
+
+<!-- Charts row -->
+<div class="row g-3 mb-4">
+  <div class="col-7">
+    <div class="card" style="padding:0">
+      <div class="card-header-row">
+        <div class="section-title" style="margin:0">Attack Category Breakdown</div>
+        <span class="framework-tag">OWASP LLM Top 10</span>
+      </div>
+      <div style="padding:16px 20px">
+        <canvas id="categoryChart" height="150" id="categoryChart"></canvas>
+        <div id="noCatData" style="display:none;text-align:center;padding:30px;color:var(--text-muted);font-size:13px">
+          No data yet — run a red team test to generate incidents.
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-5">
+    <div class="card" style="padding:0">
+      <div class="card-header-row">
+        <div class="section-title" style="margin:0">7-Day Incident Trend</div>
+        <span class="framework-tag">NIST SP 800-61</span>
+      </div>
+      <div style="padding:16px 20px">
+        <canvas id="trendChart" height="150"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Incident feed -->
+<div class="card" style="padding:0">
+  <div class="card-header-row">
+    <div>
+      <div class="section-title" style="margin:0">Incident Feed</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <span style="font-size:12px;color:var(--text-muted)">{{ recent_incidents|length }} shown</span>
+      <a href="{% url 'compliance_report' %}" style="font-size:12px;color:var(--accent);display:flex;align-items:center;gap:4px">
+        <i class="bi bi-file-earmark-text"></i> Export Report
+      </a>
+    </div>
+  </div>
+
+  {% if recent_incidents %}
+  <table class="table mb-0">
+    <thead>
+      <tr>
+        <th style="padding-left:20px">Severity</th>
+        <th>Incident ID</th>
+        <th>Attack Type</th>
+        <th>Framework Ref</th>
+        <th>User / Session</th>
+        <th>Detected</th>
+        <th>Status</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for inc in recent_incidents %}
+      <tr onclick="window.location='{% url 'incident_detail' inc.incident_id %}'">
+        <td style="padding-left:20px">
+          <span class="dot dot-{{ inc.severity_color }} me-2"></span>
+          <span class="severity-badge badge-{{ inc.severity_color }}">{{ inc.severity }}</span>
+        </td>
+        <td style="font-family:monospace;font-size:12px;color:var(--text-muted)">
+          {{ inc.incident_id|stringformat:"s"|slice:":8" }}…
+        </td>
+        <td>
+          {% for cat in inc.categories %}
+            <span style="font-size:11px;color:var(--text-dim)">{{ cat|fmt_cat }}</span>{% if not forloop.last %}<span style="color:var(--border2)"> · </span>{% endif %}
+          {% empty %}
+            <span style="color:var(--text-muted)">—</span>
+          {% endfor %}
+        </td>
+        <td>
+          {% if inc.severity == 'CRITICAL' %}
+            <span class="framework-tag" style="font-size:10px">LLM01</span>
+          {% elif inc.severity == 'HIGH' %}
+            <span class="framework-tag" style="font-size:10px">LLM02</span>
+          {% else %}
+            <span style="color:var(--text-muted);font-size:12px">—</span>
+          {% endif %}
+        </td>
+        <td style="font-size:12px;color:var(--text-muted);font-family:monospace">
+          {{ inc.user_id|default:"—" }}
+        </td>
+        <td style="font-size:12px;color:var(--text-muted)">{{ inc.timestamp|date:"M d, H:i" }}</td>
+        <td>
+          <span class="severity-badge
+            {% if inc.status == 'OPEN' %}badge-critical
+            {% elif inc.status == 'RESOLVED' %}badge-success
+            {% elif inc.status == 'CONTAINED' %}badge-high
+            {% else %}badge-secondary{% endif %}">
+            {{ inc.status }}
+          </span>
+        </td>
+        <td style="padding-right:20px">
+          <a href="{% url 'incident_detail' inc.incident_id %}" style="font-size:12px;color:var(--info);display:flex;align-items:center;gap:3px">
+            Investigate <i class="bi bi-arrow-right"></i>
+          </a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div style="padding:52px;text-align:center;color:var(--text-muted)">
+    <i class="bi bi-shield-check" style="font-size:36px;display:block;margin-bottom:12px;color:var(--success)"></i>
+    <div style="font-size:15px;margin-bottom:6px">No incidents detected</div>
+    <div style="font-size:13px">Use the <a href="{% url 'simulator' %}" style="color:var(--accent)">AI Red Team Testing</a> console to simulate attacks.</div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const categoryData = {{ category_counts_json|safe }};
+const trendData    = {{ trend_data_json|safe }};
+
+// Category chart
+const catLabels = Object.keys(categoryData);
+const catValues = Object.values(categoryData);
+if (catLabels.length > 0) {
+  const catCtx = document.getElementById('categoryChart');
+  new Chart(catCtx, {
+    type: 'bar',
+    data: {
+      labels: catLabels,
+      datasets: [{
+        data: catValues,
+        backgroundColor: [
+          'rgba(239,68,68,.65)',
+          'rgba(245,158,11,.65)',
+          'rgba(59,130,246,.65)',
+          'rgba(16,185,129,.65)',
+          'rgba(99,102,241,.65)',
+          'rgba(236,72,153,.65)',
+          'rgba(20,184,166,.65)',
+        ],
+        borderColor: [
+          'rgba(239,68,68,1)',
+          'rgba(245,158,11,1)',
+          'rgba(59,130,246,1)',
+          'rgba(16,185,129,1)',
+          'rgba(99,102,241,1)',
+          'rgba(236,72,153,1)',
+          'rgba(20,184,166,1)',
+        ],
+        borderWidth: 1.5,
+        borderRadius: 6,
+        hoverBackgroundColor: [
+          'rgba(239,68,68,.85)',
+          'rgba(245,158,11,.85)',
+          'rgba(59,130,246,.85)',
+          'rgba(16,185,129,.85)',
+          'rgba(99,102,241,.85)',
+          'rgba(236,72,153,.85)',
+          'rgba(20,184,166,.85)',
+        ],
+      }]
+    },
+    options: {
+      plugins: { legend: { display: false }, tooltip: { backgroundColor: 'rgba(10,15,28,.95)', borderColor: 'rgba(255,255,255,.1)', borderWidth: 1, titleColor: '#f0f4f8', bodyColor: '#a8bccf', padding: 10 } },
+      scales: {
+        x: { grid: { color: 'rgba(255,255,255,.05)' }, ticks: { color: '#7a90aa', font: { size: 11, weight: '600' } } },
+        y: { grid: { color: 'rgba(255,255,255,.05)' }, ticks: { color: '#7a90aa', font: { size: 11 }, stepSize: 1 }, beginAtZero: true }
+      },
+      maintainAspectRatio: true,
+    }
+  });
+} else {
+  document.getElementById('categoryChart').style.display = 'none';
+  document.getElementById('noCatData').style.display = 'block';
+}
+
+// Trend chart
+new Chart(document.getElementById('trendChart'), {
+  type: 'line',
+  data: {
+    labels: trendData.map(d => d.day),
+    datasets: [{
+      data: trendData.map(d => d.count),
+      borderColor: '#818cf8',
+      backgroundColor: (ctx) => {
+        const g = ctx.chart.ctx.createLinearGradient(0,0,0,200);
+        g.addColorStop(0, 'rgba(99,102,241,.35)');
+        g.addColorStop(1, 'rgba(99,102,241,.02)');
+        return g;
+      },
+      borderWidth: 2.5,
+      fill: true,
+      tension: 0.45,
+      pointBackgroundColor: '#818cf8',
+      pointBorderColor: '#1a2540',
+      pointBorderWidth: 2,
+      pointRadius: 4,
+      pointHoverRadius: 6,
+    }]
+  },
+  options: {
+    plugins: { legend: { display: false }, tooltip: { backgroundColor: 'rgba(10,15,28,.95)', borderColor: 'rgba(255,255,255,.1)', borderWidth: 1, titleColor: '#f0f4f8', bodyColor: '#a8bccf', padding: 10 } },
+    scales: {
+      x: { grid: { color: 'rgba(255,255,255,.05)' }, ticks: { color: '#7a90aa', font: { size: 11, weight: '600' } } },
+      y: { grid: { color: 'rgba(255,255,255,.05)' }, ticks: { color: '#7a90aa', font: { size: 11 }, stepSize: 1 }, beginAtZero: true }
+    },
+    maintainAspectRatio: true,
+  }
+});
+</script>
+{% endblock %}

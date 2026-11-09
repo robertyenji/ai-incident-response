@@ -1,0 +1,218 @@
+{% extends "base.html" %}
+{% load incident_filters %}
+{% block title %}Compliance Report - AI Incident Response{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex align-items-start justify-content-between">
+  <div>
+    <h1>AI Security Compliance Report</h1>
+    <div class="subtitle">Audit-ready incident summary · Generated {{ report_date }}</div>
+    <div class="header-meta">
+      <span class="framework-tag">HIPAA 45 CFR 164.308(a)(6)</span>
+      <span class="framework-tag">NIST SP 800-61 Rev 2</span>
+      <span class="framework-tag">OWASP LLM Top 10</span>
+    </div>
+  </div>
+  <button onclick="window.print()"
+    style="display:inline-flex;align-items:center;gap:8px;background:var(--accent);color:#fff;border:none;border-radius:7px;padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap">
+    <i class="bi bi-printer"></i> Print / Save PDF
+  </button>
+</div>
+
+<!-- Report header card (prints well) -->
+<div class="card mb-4" style="padding:24px 28px;border-color:var(--border2)">
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:16px">
+    <div>
+      <div style="font-size:18px;font-weight:700;margin-bottom:4px">AI Incident Response Platform</div>
+      <div style="font-size:13px;color:var(--text-muted)">Healthcare AI Governance — Security Incident Summary</div>
+      <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+        <span class="framework-tag">NIST SP 800-61 Rev 2</span>
+        <span class="framework-tag">HIPAA Security Rule</span>
+        <span class="framework-tag">OWASP LLM Top 10 2025</span>
+        <span class="framework-tag">NIST AI RMF 1.0</span>
+      </div>
+    </div>
+    <div style="text-align:right;font-size:13px;color:var(--text-muted)">
+      <div><strong style="color:var(--text)">Report Period:</strong> {{ period_start }} – {{ period_end }}</div>
+      <div style="margin-top:4px"><strong style="color:var(--text)">Generated:</strong> {{ report_date }}</div>
+      <div style="margin-top:4px"><strong style="color:var(--text)">Classification:</strong> CONFIDENTIAL</div>
+    </div>
+  </div>
+</div>
+
+<!-- Executive summary -->
+<div class="card mb-4" style="padding:0">
+  <div class="card-header-row">
+    <div class="section-title" style="margin:0">Executive Summary</div>
+  </div>
+  <div style="padding:20px 24px">
+    <div class="row g-4">
+      <div class="col-8">
+        <p style="font-size:14px;color:var(--text-dim);line-height:1.8;margin:0">
+          During the reporting period, the AI Incident Response platform processed
+          <strong style="color:var(--text)">{{ total }} prompts</strong> against the healthcare AI endpoint.
+          The detection engine identified <strong style="color:var(--critical)">{{ triggered }} security incidents</strong>,
+          of which <strong style="color:var(--critical)">{{ critical_count }} were classified CRITICAL</strong>
+          (jailbreak or data exfiltration attempts) and
+          <strong style="color:var(--high)">{{ high_count }} were classified HIGH</strong>
+          (instruction override or role hijacking). All incidents triggered automated containment and
+          were logged with HIPAA-compliant forensic evidence packages.
+        </p>
+        <p style="font-size:14px;color:var(--text-dim);line-height:1.8;margin-top:12px;margin-bottom:0">
+          <strong style="color:var(--text)">{{ resolved_count }} incidents</strong> were fully resolved during the period.
+          <strong style="color:var(--text)">{{ open_count }}</strong> remain open and are under active investigation.
+        </p>
+      </div>
+      <div class="col-4">
+        <div style="background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:16px">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin-bottom:12px">Key Metrics</div>
+          {% for metric in key_metrics %}
+          <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:13px">
+            <span style="color:var(--text-muted)">{{ metric.label }}</span>
+            <span style="font-weight:600;color:{{ metric.color }}">{{ metric.value }}</span>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Incident breakdown -->
+<div class="row g-3 mb-4">
+  <div class="col-4">
+    <div class="card stat-card stat-critical">
+      <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Critical Incidents</div>
+      <div style="font-size:36px;font-weight:700;color:var(--critical);line-height:1">{{ critical_count }}</div>
+      <div style="font-size:12px;color:var(--text-muted);margin-top:6px">Jailbreak / Data Exfiltration</div>
+      <div style="margin-top:8px"><span class="framework-tag" style="font-size:10px">OWASP LLM01</span></div>
+    </div>
+  </div>
+  <div class="col-4">
+    <div class="card stat-card stat-high">
+      <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">High Incidents</div>
+      <div style="font-size:36px;font-weight:700;color:var(--high);line-height:1">{{ high_count }}</div>
+      <div style="font-size:12px;color:var(--text-muted);margin-top:6px">Override / Role Hijacking</div>
+      <div style="margin-top:8px"><span class="framework-tag" style="font-size:10px">OWASP LLM02</span></div>
+    </div>
+  </div>
+  <div class="col-4">
+    <div class="card stat-card stat-info">
+      <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Resolved</div>
+      <div style="font-size:36px;font-weight:700;color:var(--success);line-height:1">{{ resolved_count }}</div>
+      <div style="font-size:12px;color:var(--text-muted);margin-top:6px">Closed with evidence package</div>
+      <div style="margin-top:8px"><span class="framework-tag" style="font-size:10px">NIST 800-61 Ph.4</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- Attack category breakdown -->
+<div class="card mb-4" style="padding:0">
+  <div class="card-header-row">
+    <div class="section-title" style="margin:0">Attack Category Analysis</div>
+    <span class="framework-tag">OWASP LLM Top 10</span>
+  </div>
+  <div style="padding:20px">
+    {% for cat in category_breakdown %}
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+      <div style="width:160px;font-size:12px;color:var(--text-dim)">{{ cat.label }}</div>
+      <div style="flex:1;height:10px;background:var(--surface2);border-radius:5px;overflow:hidden">
+        <div style="height:100%;width:{{ cat.pct }}%;background:var(--critical);border-radius:5px;transition:width .4s"></div>
+      </div>
+      <div style="width:40px;text-align:right;font-size:12px;font-weight:600;color:var(--text)">{{ cat.count }}</div>
+      <span class="framework-tag" style="font-size:10px;width:70px">{{ cat.owasp }}</span>
+    </div>
+    {% empty %}
+    <div style="color:var(--text-muted);font-size:13px;text-align:center;padding:20px">No incidents recorded in this period.</div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- Recent incidents table -->
+<div class="card mb-4" style="padding:0">
+  <div class="card-header-row">
+    <div class="section-title" style="margin:0">Incident Register (Most Recent 20)</div>
+    <span style="font-size:12px;color:var(--text-muted)">HIPAA 45 CFR 164.530(j) — 6-year retention</span>
+  </div>
+  {% if recent_incidents %}
+  <table class="table mb-0">
+    <thead>
+      <tr>
+        <th style="padding-left:20px">Incident ID</th>
+        <th>Detected</th>
+        <th>Severity</th>
+        <th>Attack Type</th>
+        <th>User</th>
+        <th>Containment</th>
+        <th>Status</th>
+        <th>Evidence</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for inc in recent_incidents %}
+      <tr>
+        <td style="padding-left:20px;font-family:monospace;font-size:12px;color:var(--accent)">
+          <a href="{% url 'incident_detail' inc.incident_id %}">{{ inc.incident_id|stringformat:"s"|slice:":8" }}…</a>
+        </td>
+        <td style="font-size:12px;color:var(--text-muted)">{{ inc.timestamp|date:"Y-m-d H:i" }}</td>
+        <td><span class="severity-badge badge-{{ inc.severity_color }}">{{ inc.severity }}</span></td>
+        <td style="font-size:12px;color:var(--text-dim)">
+          {% for cat in inc.categories %}{{ cat|fmt_cat }}{% if not forloop.last %}, {% endif %}{% endfor %}
+        </td>
+        <td style="font-size:11px;font-family:monospace;color:var(--text-muted)">{{ inc.user_id|default:"—" }}</td>
+        <td style="font-size:11px;color:var(--text-muted)">{{ inc.containment_actions.count }} action{{ inc.containment_actions.count|pluralize }}</td>
+        <td>
+          <span class="severity-badge
+            {% if inc.status == 'OPEN' %}badge-critical
+            {% elif inc.status == 'RESOLVED' %}badge-success
+            {% elif inc.status == 'CONTAINED' %}badge-high
+            {% else %}badge-secondary{% endif %}" style="font-size:10px">
+            {{ inc.status }}
+          </span>
+        </td>
+        <td style="font-size:11px">
+          {% if inc.evidence_packages.count > 0 %}
+            <span style="color:var(--success)"><i class="bi bi-check2-circle"></i> Packaged</span>
+          {% else %}
+            <span style="color:var(--text-muted)">—</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div style="padding:40px;text-align:center;color:var(--text-muted);font-size:13px">No incidents in this reporting period.</div>
+  {% endif %}
+</div>
+
+<!-- Compliance attestation -->
+<div class="card" style="padding:24px 28px;border-color:var(--border2)">
+  <div class="section-title">Compliance Attestation</div>
+  <div class="row g-4">
+    {% for item in attestation %}
+    <div class="col-6">
+      <div style="display:flex;gap:12px">
+        <i class="bi bi-patch-check-fill" style="color:var(--success);font-size:18px;flex-shrink:0;margin-top:2px"></i>
+        <div>
+          <div style="font-size:13px;font-weight:600;margin-bottom:3px">{{ item.title }}</div>
+          <div style="font-size:12px;color:var(--text-muted);line-height:1.6">{{ item.detail }}</div>
+          <span class="framework-tag" style="font-size:10px;margin-top:5px;display:inline-block">{{ item.ref }}</span>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_head %}
+<style>
+@media print {
+  .sidebar, .page-header button { display: none !important; }
+  .main { margin-left: 0 !important; padding: 20px !important; }
+  body { background: #fff !important; color: #000 !important; }
+  .card { border: 1px solid #ddd !important; background: #fff !important; }
+}
+</style>
+{% endblock %}
